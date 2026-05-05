@@ -109,6 +109,7 @@ class AiServeApp:
         self.ai_sensitivity = 1000
         self.last_auto_snap_time = 0
         self.COOLDOWN_SECONDS = 2.0
+        self.snap_counter = 0
         self.frame_skip_var = tk.IntVar(value=2)
 
         style = ttk.Style()
@@ -316,6 +317,13 @@ class AiServeApp:
             self.output_folder = os.path.abspath(f)
             self.lbl_folder.config(text=f"...{self.output_folder[-25:]}")
             self.btn_fld.config_text("✔ Output Set")
+            existing = glob.glob(os.path.join(self.output_folder, "Snap_*.jpg"))
+            nums = []
+            for ef in existing:
+                m = re.search(r'Snap_(\d+)\.jpg$', os.path.basename(ef))
+                if m:
+                    nums.append(int(m.group(1)))
+            self.snap_counter = max(nums) if nums else 0
             ts = datetime.now().strftime("%Y%m%d")
             self.report_path = os.path.join(self.output_folder, f"Report_{ts}.xlsx")
             self.kml_path = os.path.join(self.output_folder, f"Map_{ts}.kml")
@@ -331,12 +339,14 @@ class AiServeApp:
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         frame = self.last_raw_frame.copy()
         h, w, _ = frame.shape
-        cv2.rectangle(frame, (0, h-60), (w, h), (0,0,0), -1)
+        cv2.rectangle(frame, (0, h-80), (w, h), (0,0,0), -1)
 
         scale = w / 1400.0 if w > 1000 else 0.6
-        cv2.putText(frame, f"{ts} | {lat:.6f}, {lon:.6f}", (20, h-20), cv2.FONT_HERSHEY_SIMPLEX, scale, (0,255,255), 2)
+        cv2.putText(frame, "AiServe SL | Airotor Labs", (20, h-55), cv2.FONT_HERSHEY_SIMPLEX, scale, (0,255,255), 2)
+        cv2.putText(frame, f"{ts} | {lat:.6f}, {lon:.6f}", (20, h-20), cv2.FONT_HERSHEY_SIMPLEX, scale, (255,255,255), 2)
 
-        fname = f"Snap_{datetime.now().strftime('%H%M%S_%f')[:9]}.jpg"
+        self.snap_counter += 1
+        fname = f"Snap_{self.snap_counter:03d}.jpg"
         cv2.imwrite(os.path.join(self.output_folder, fname), frame)
 
         data = {'Timestamp': ts, 'Image': fname, 'Lat': lat, 'Lon': lon, 'Type': "AI" if auto else "Manual"}
